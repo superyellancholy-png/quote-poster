@@ -1,6 +1,8 @@
-# 二流名言 · 2ndmaxim
+# 二流名言 · quote-poster
 
-当前版本：**1.2**。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
+品牌：**Audience2**。中文名：**二流名言**。
+
+当前版本：**1.3**。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 制作歌词和金句海报，支持红黑照片底绿字、浅绿织纹底红字两种版本。输出 PNG、可编辑 HTML 和排版参数 JSON。
 
@@ -17,18 +19,20 @@
 
 点击查看原图：[红黑版](docs/examples/darkroom.png) · [浅绿版](docs/examples/mint.png)。案例展示排版效果，正文、强调词和来源仍按每次任务确认。
 
+原技能标识为 `2ndmaxim`，现改为 `quote-poster`。已有安装请将技能目录改为 `quote-poster`，之后使用 `$quote-poster`。
+
 ## 安装
 
 需要 Node.js 与 npm。在目标项目根目录执行：
 
 ```sh
 mkdir -p .agents/skills
-git clone https://github.com/superyellancholy-png/2ndmaxim.git .agents/skills/2ndmaxim
-cd .agents/skills/2ndmaxim
+git clone https://github.com/superyellancholy-png/quote-poster.git .agents/skills/quote-poster
+cd .agents/skills/quote-poster
 npm ci
 ```
 
-在 Codex 中调用 `$2ndmaxim`。先选择版本，再确认正文断行、正文下方以大号标题单列的放大词以及来源；确认后才生成图片。
+在 Codex 中调用 `$quote-poster`。先选择版本，再确认正文断行、正文下方以大号标题单列的放大词以及来源；确认后才生成图片。
 
 ## 渲染已确认配置
 

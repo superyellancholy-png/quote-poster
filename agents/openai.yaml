@@ -1,7 +1,7 @@
 interface:
   display_name: 二流名言
   short_description: 二流名言海报：先选择红黑底绿字或浅绿底红字，再生成歌词与金句海报
-  default_prompt: 使用 $2ndmaxim，先让我选择红黑底绿字或浅绿底红字，再把文案制作成海报。
+  default_prompt: 使用 $quote-poster，先让我选择红黑底绿字或浅绿底红字，再把文案制作成海报。
   icon_small: assets/icon.svg
   icon_large: assets/icon.svg
 policy:
