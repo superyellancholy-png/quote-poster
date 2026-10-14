@@ -5,10 +5,11 @@ function dep(n){try{return require(n)}catch{return require(require.resolve(n,{pa
 const {createCanvas,loadImage,GlobalFonts}=dep('@napi-rs/canvas'),root=path.resolve(__dirname,'..');
 const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const sharedAssets=require('./shared-assets.cjs');
+const normalizeText=require('./normalize-text.cjs'),assertFontCoverage=require('./font-coverage.cjs');
 async function main(){
  if(process.argv.includes('--help')){console.log('node render-poster.cjs config.json output-directory; variant must be darkroom or mint. See references/unified.md');return}
  if(process.argv.length!==4)throw Error('Supply config.json and output-directory');
- const file=path.resolve(process.argv[2]),base=path.dirname(file),cfg=JSON.parse(fs.readFileSync(file)),out=path.resolve(process.argv[3]);
+ const file=path.resolve(process.argv[2]),base=path.dirname(file),cfg=normalizeText(JSON.parse(fs.readFileSync(file))),out=path.resolve(process.argv[3]);
  if(!['darkroom','mint'].includes(cfg.variant))throw Error('Choose variant first: darkroom (红黑底绿字) or mint (浅绿底红字). No default.');
  if(cfg.layout==='legacy'){
   if(cfg.variant!=='darkroom')throw Error('legacy is only for existing darkroom/monologue layouts');
@@ -21,11 +22,12 @@ async function main(){
  const fontName=cfg.font?path.resolve(base,cfg.font):path.join(root,'assets/fonts/YouyouYisong.ttf.gz');
  const readFont=p=>p.endsWith('.gz')?zlib.gunzipSync(fs.readFileSync(p)):fs.readFileSync(p);
  const fontBytes=readFont(fontName);if(!GlobalFonts.register(fontBytes,'Body'))throw Error('Cannot load body font');
+ assertFontCoverage(fontBytes,[cfg.text,cfg.author,cfg.workTitle,cfg.sourceTitle,cfg.sourceMedium,cfg.sourcePrefix,...Object.values(cfg.credits??{}),cfg.credits?'作词：作曲：':'',cfg.workTitle||cfg.sourceTitle?'《》':''].filter(v=>typeof v==='string').join(''),'正文字体');
  let backBytes;
  const layerHTML=[];
  if(mint){
   const bytes=fs.readFileSync(path.join(root,'assets/mint-texture.png'));b.drawImage(await loadImage(bytes),0,0,W,H);layerHTML.push(`<img class="layer" alt="浅绿织纹" src="${data(bytes)}">`);
-  backBytes=readFont(path.join(root,'assets/fonts/KingHwaOldSong-v3.ttf.gz'));if(!GlobalFonts.register(backBytes,'Back'))throw Error('Cannot load background font');
+  backBytes=readFont(path.join(root,'assets/fonts/KingHwaOldSong-v3.ttf.gz'));if(!GlobalFonts.register(backBytes,'Back'))throw Error('Cannot load background font');assertFontCoverage(backBytes,(cfg.backgroundText??[]).join(''),'背景字体');
  }else{
   if(typeof cfg.photo!=='string')throw Error('darkroom requires an original photo');
   const im=await loadImage(path.resolve(base,cfg.photo)),scale=Math.max(W/im.width,H/im.height),sw=W/scale,sh=H/scale;
@@ -49,7 +51,7 @@ async function main(){
 
  const lines=cfg.lines??cfg.text.split('\n');if(!Array.isArray(lines)||!lines.length||lines.some(s=>typeof s!=='string'||!s.trim()))throw Error('lines must contain non-empty strings, no blank lines');
  if(lines.join('')!==cfg.text.replace(/\n/g,''))throw Error('lines must preserve original text exactly');
- if(cfg.originalText){const original=Array.from(cfg.originalText.replace(/\s/g,'')),edited=Array.from(cfg.text.replace(/\s/g,''));let j=0;for(const ch of edited){if(ch===original[j])j++;else if(!'，。'.includes(ch))throw Error('Only commas and periods may be added to originalText');}if(j!==original.length)throw Error('Original words and punctuation must be preserved');}
+ if(cfg.originalText){const original=Array.from(cfg.normalizedOriginalText.replace(/\s/g,'')),edited=Array.from(cfg.text.replace(/\s/g,''));let j=0;for(const ch of edited){if(ch===original[j])j++;else if(!'，。'.includes(ch))throw Error('Only commas and periods may be added to originalText');}if(j!==original.length)throw Error('Original words and punctuation must be preserved');}
 
  const emphasis=cfg.emphasis??[];if(!Array.isArray(emphasis))throw Error('emphasis must be a list of exact phrases');
  const all=Array.from(lines.join('')),factors=all.map(()=>1);for(const word of emphasis){const needle=Array.from(word);if(!needle.length||!all.join('').includes(word))throw Error('Invalid emphasis phrase');for(let i=0;i<=all.length-needle.length;i++)if(needle.every((v,j)=>all[i+j]===v))needle.forEach((_,j)=>factors[i+j]=1.55);}

@@ -5,6 +5,7 @@ function dependency(name){try{return require(name);}catch{return require(require
 const {createCanvas,loadImage,GlobalFonts}=dependency('@napi-rs/canvas');
 const root=path.resolve(__dirname,'..');
 const sharedAssets=require('./shared-assets.cjs');
+const normalizeText=require('./normalize-text.cjs'),assertFontCoverage=require('./font-coverage.cjs');
 const help='Usage: node render-poster.cjs config.json output-directory\nCreates poster.png, poster.html and recipe.json. See references/parameters.md.';
 if(process.argv.includes('--help')){console.log(help);process.exit(0);}
 function num(v,def,min,max,key){v=v??def;if(typeof v!=='number'||!Number.isFinite(v)||v<min||v>max)throw Error(`${key} must be ${min}..${max}`);return v;}
@@ -13,7 +14,7 @@ function escape(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt
 function local(p,base){return path.resolve(base,p);}
 async function main(){
  if(process.argv.length!==4)throw Error(help);
- const configPath=path.resolve(process.argv[2]),base=path.dirname(configPath),raw=JSON.parse(fs.readFileSync(configPath,'utf8')),out=path.resolve(process.argv[3]);
+ const configPath=path.resolve(process.argv[2]),base=path.dirname(configPath),raw=normalizeText(JSON.parse(fs.readFileSync(configPath,'utf8'))),out=path.resolve(process.argv[3]);
  const data=sharedAssets(out);
  if(typeof raw.photo!=='string'||!raw.photo)throw Error('photo is required; supply an original local photograph.');
  if(typeof raw.text!=='string'||!raw.text.trim())throw Error('text is required.');
@@ -24,6 +25,7 @@ async function main(){
  if(!/\.(ttf|otf)(\.gz)?$/i.test(fontPath))throw Error('Use a TTF or OTF font. Convert WOFF/WOFF2 before rendering.');
  const fontBytes=fontPath.endsWith('.gz')?require('node:zlib').gunzipSync(fs.readFileSync(fontPath)):fs.readFileSync(fontPath);
  if(!GlobalFonts.register(fontBytes,'PosterFont'))throw Error('Font could not be loaded.');
+ assertFontCoverage(fontBytes,[raw.text,raw.author,typeof raw.brand==='string'?raw.brand:''].filter(Boolean).join(''),'正文字体');
  const cfg={...raw,preset,photo:local(raw.photo,base),font:fontPath,
   tint:hex(raw.tint,'#c90b13'),textColor:hex(raw.textColor,'#b4ddbe'),
   brightness:num(raw.brightness,1.05,.1,2.5,'brightness'),contrast:num(raw.contrast,1.2,.1,3,'contrast'),
