@@ -3,7 +3,7 @@ let converter;
 module.exports=function normalizeText(input){
  const mode=input.scriptMode??'simplified';
  if(!['simplified','preserve'].includes(mode))throw Error('scriptMode must be simplified or preserve');
- if(mode==='simplified'&&!converter)converter=require('opencc-js').Converter({from:'t',to:'cn'});
+ if(mode==='simplified'&&!converter)converter=require('opencc-js').Converter({from:'tw',to:'cn'});
  const convert=s=>typeof s==='string'&&mode==='simplified'?converter(s):s;
  const cfg={...input,scriptMode:mode};
  for(const key of ['text','author','workTitle','sourceMedium','sourceTitle','sourcePrefix','brand'])cfg[key]=convert(input[key]);
