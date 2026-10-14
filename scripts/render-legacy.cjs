@@ -5,6 +5,7 @@ function dependency(name){try{return require(name);}catch{return require(require
 const {createCanvas,loadImage,GlobalFonts}=dependency('@napi-rs/canvas');
 const root=path.resolve(__dirname,'..');
 const sharedAssets=require('./shared-assets.cjs');
+const checkPunctuation=require('./check-punctuation.cjs');
 const normalizeText=require('./normalize-text.cjs'),assertFontCoverage=require('./font-coverage.cjs');
 const help='Usage: node render-poster.cjs config.json output-directory\nCreates poster.png, poster.html and recipe.json. See references/parameters.md.';
 if(process.argv.includes('--help')){console.log(help);process.exit(0);}
@@ -18,6 +19,7 @@ async function main(){
  const data=sharedAssets(out);
  if(typeof raw.photo!=='string'||!raw.photo)throw Error('photo is required; supply an original local photograph.');
  if(typeof raw.text!=='string'||!raw.text.trim())throw Error('text is required.');
+ checkPunctuation(raw);
  const preset=raw.preset??'darkroom';if(!['darkroom','monologue'].includes(preset))throw Error('preset must be darkroom or monologue');
  const W=1200,H=1600;
  const BODY_SPACING=-45;

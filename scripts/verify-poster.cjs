@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),zlib=require('node:zlib'),{createHash}=require('node:crypto');
-const normalize=require('./normalize-text.cjs'),coverage=require('./font-coverage.cjs');
+const normalize=require('./normalize-text.cjs'),coverage=require('./font-coverage.cjs'),checkPunctuation=require('./check-punctuation.cjs');
 const {createCanvas,GlobalFonts}=require('@napi-rs/canvas');
 const root=path.resolve(__dirname,'..'),sha=b=>createHash('sha256').update(b).digest('hex');
 const near=(a,b)=>Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<0.02;
@@ -27,6 +27,7 @@ function main(){
  check('成品配对',recipe.outputInfo?.pngSha256===sha(png)&&recipe.outputInfo?.htmlSha256===sha(Buffer.from(html)),'PNG、HTML 与本次参数记录相匹配');
  check('画布',png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))&&png.readUInt32BE(16)===1200&&png.readUInt32BE(20)===1600,'PNG 1200×1600');
  check('文字与简繁',recipe.text===cfg.text&&recipe.originalText===cfg.originalText&&recipe.scriptMode===cfg.scriptMode&&JSON.stringify(recipe.lines??cfg.text.split('\n'))===JSON.stringify(cfg.lines??cfg.text.split('\n'))&&body.map(g=>g.char).join('')===cfg.text.replace(/\n/g,''),'与按当前默认规则转换的配置逐字核对；保留原文');
+ try{const p=checkPunctuation(cfg);check('标点策略',true,p.mode+'：程序仅检查标点存在与明确例外，句意需人工核对');}catch(e){check('标点策略',false,e.message);}
  check('强调词',JSON.stringify(recipe.emphasis??[])===JSON.stringify(cfg.emphasis??[]));
  check('实际 HTML 字形',all.length>0&&actual.length===all.length&&all.every((g,i)=>g.char===actual[i].char&&near(g.x,actual[i].x)&&near(g.y,actual[i].y)&&near(g.fontSize,actual[i].fontSize)),'逐字核对 HTML 字号、坐标和字体家族');
  const fontPath=cfg.font?path.resolve(path.dirname(file),cfg.font):path.join(root,'assets/fonts/YouyouYisong.ttf.gz');
