@@ -2,7 +2,7 @@
 
 品牌：**Audience2**。中文名：**二流名言**。
 
-当前版本：**1.4**。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：**1.5**。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 制作歌词和金句海报，支持红黑照片底绿字、浅绿织纹底红字两种版本。输出 PNG、可编辑 HTML 和排版参数 JSON。
 
@@ -43,6 +43,10 @@ node scripts/render-poster.cjs /path/to/config.json /path/to/任务名称/成品
 ```
 
 将示意路径替换为实际路径。配置中的照片和自定义字体路径相对于配置文件解析。两种版本均使用同一渲染入口，浅绿版无需照片。配置 `outputName` 可在一个任务目录中区分多张海报，不为每张图片建文件夹。
+
+## 验收与修改边界
+
+默认只改配置，使用正式渲染器；异常先定位，不复制临时脚本绕过。每次生成附带验收 JSON，程序通过后仍须查看 PNG；验收方法及规则优先级见 [验收说明](references/acceptance.md)。
 
 ## 当前关键规则
 

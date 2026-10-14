@@ -1,6 +1,6 @@
 {
   "name": "quote-poster",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "private": true,
   "description": "Audience2 二流名言海报技能与渲染器",
   "dependencies": {

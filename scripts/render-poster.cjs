@@ -6,10 +6,13 @@ const {createCanvas,loadImage,GlobalFonts}=dep('@napi-rs/canvas'),root=path.reso
 const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const sharedAssets=require('./shared-assets.cjs');
 const normalizeText=require('./normalize-text.cjs'),assertFontCoverage=require('./font-coverage.cjs');
+const {createHash}=require('node:crypto');
+const sha=b=>createHash('sha256').update(b).digest('hex');
 async function main(){
  if(process.argv.includes('--help')){console.log('node render-poster.cjs config.json output-directory; variant must be darkroom or mint. See references/unified.md');return}
  if(process.argv.length!==4)throw Error('Supply config.json and output-directory');
- const file=path.resolve(process.argv[2]),base=path.dirname(file),cfg=normalizeText(JSON.parse(fs.readFileSync(file))),out=path.resolve(process.argv[3]);
+ const file=path.resolve(process.argv[2]),base=path.dirname(file),inputBytes=fs.readFileSync(file),cfg=normalizeText(JSON.parse(inputBytes)),out=path.resolve(process.argv[3]);
+ if(cfg.font&&cfg.fontChangeConfirmed!==true)throw Error('默认只能使用又又意宋；更换字体需用户明确确认，并设置 fontChangeConfirmed: true。');
  if(!['darkroom','mint'].includes(cfg.variant))throw Error('Choose variant first: darkroom (红黑底绿字) or mint (浅绿底红字). No default.');
  if(cfg.layout==='legacy'){
   if(cfg.variant!=='darkroom')throw Error('legacy is only for existing darkroom/monologue layouts');
@@ -86,6 +89,9 @@ async function main(){
     if(row.chars[start].factor===1)continue;
     let end=start+1;while(end<row.chars.length&&row.chars[end].factor>1)end++;
     const run=row.chars.slice(start,end);let shift=0;
+    // First-row emphasis may extend down into the next row; align its bottom
+    // to the small-word anchor without moving the row or widening line gaps.
+    if(i===0&&row.anchorMode==='small-words')shift=-Math.max(0,Math.max(...run.map(ch=>ch.box.d))-row.anchorD);
     if(row.anchorMode==='small-words'){
      for(let j=0;j<i;j++)for(const upper of rows[j].chars)for(const ch of run){
       const ul=pad-rows[j].left+upper.box.left,ur=pad-rows[j].left+upper.box.right;
@@ -116,10 +122,10 @@ async function main(){
  for(;size>=24;size--){layout=measure(size);if(layout.rows.every(r=>r.right-r.left<=W-pad*2)&&layout.bodyHeight<=bodyLimit-pad*2&&!layout.hasCollision)break;}
  if(size<24)throw Error('Cannot fit without collision: adjust word placement or semantic line breaks before confirming text; do not widen global line spacing');
  const {rows,bodyHeight,baselineSteps,regularBaselineStep,blockTop}=layout;
- const topPadding=(bodyLimit-bodyHeight)/2,baselineOrigin=topPadding-blockTop,rendered=[];
+ const topPadding=(bodyLimit-bodyHeight)/2,baselineOrigin=topPadding-blockTop,rendered=[],bodyGlyphs=[];
  rows.forEach((r,i)=>{
   const x=pad-r.left,y=baselineOrigin+r.baseline;
-  r.chars.forEach(ch=>draw(ch.ch,'Body',ch.size,spacing,x+ch.x,y+(ch.yOffset??0),color,'source-over',frontSVG));
+  r.chars.forEach(ch=>{const gy=y+(ch.yOffset??0);draw(ch.ch,'Body',ch.size,spacing,x+ch.x,gy,color,'source-over',frontSVG);bodyGlyphs.push({char:ch.ch,row:i,fontSize:ch.size,x:x+ch.x,y:gy,left:x+ch.box.left,right:x+ch.box.right,top:gy-ch.box.a,bottom:gy+ch.box.d});});
   rendered.push({text:lines[i],baseline:y,left:pad,right:pad+r.right-r.left,top:y-r.a,bottom:y+r.d,anchorTop:y-r.anchorA,anchorBottom:y+r.anchorD,anchorMode:r.anchorMode,emphasisOffsets:r.chars.filter(ch=>ch.yOffset).map(ch=>({text:ch.ch,offsetY:ch.yOffset}))});
  });
  const outputName=cfg.outputName??'poster';
@@ -127,7 +133,7 @@ async function main(){
  const recipeName=cfg.outputName?`${outputName}_排版参数.json`:'recipe.json';
  const sourceType=cfg.sourceType;
  if(sourceType!==undefined&&!['lyrics','quote'].includes(sourceType))throw Error('sourceType must be lyrics or quote');
- const author=String(cfg.author??''),sourceTop=bodyLimit,sourceRows=[];
+ const author=String(cfg.author??''),sourceTop=bodyLimit,sourceRows=[],sourceGlyphs=[];
  if(cfg.workTitle!==undefined&&(typeof cfg.workTitle!=='string'||!cfg.workTitle.trim()))throw Error('workTitle must be a non-empty string');
  const sourceAuthor=sourceType==='lyrics'&&cfg.workTitle?`${author}《${cfg.workTitle}》`:author;
  if(sourceType==='quote'){
@@ -147,6 +153,7 @@ async function main(){
   if(fontSize<20)throw Error('Source line too long; shorten verified formatting or split the poster');
   const stroke=fontSize*.0045,x=1190-m.right-stroke,baseline=top+m.ascent+stroke;
   draw(text,'Body',fontSize,-4.666667,x,baseline,color,'source-over',frontSVG);
+  sourceGlyphs.push(...m.chars.map(g=>({char:g.ch,row:sourceRows.length,fontSize,x:x+g.x,y:baseline})));
   const row={role,text,fontSize,left:x+m.left-stroke,right:1190,top,bottom:baseline+m.descent+stroke,baseline};sourceRows.push(row);return row;
  }
  if(author){
@@ -165,6 +172,6 @@ async function main(){
  }
  if(cfg.brand!==false){const bytes=fs.readFileSync(path.join(root,'assets',mint?'logo-red.png':'watermark-exact.png'));c.globalCompositeOperation='source-over';c.drawImage(await loadImage(bytes),2,1513,278,57);frontSVG.push(`<image x="2" y="1513" width="278" height="57" href="${data(bytes)}"/>`);}
  const html=`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(author||cfg.text)}</title><style>@font-face{font-family:Body;src:url(${data(fontBytes,'font/ttf')})}${backBytes?`@font-face{font-family:Back;src:url(${data(backBytes,'font/ttf')})}`:''}body{margin:0;background:#333;display:grid;place-items:center}.poster{position:relative;width:min(100vw,75vh);aspect-ratio:3/4;isolation:isolate}.layer{position:absolute;inset:0;width:100%;height:100%}</style><article class="poster">${layerHTML.join('')}<svg class="layer" viewBox="0 0 1200 1600" style="mix-blend-mode:soft-light">${backSVG.join('')}</svg><svg class="layer" viewBox="0 0 1200 1600">${frontSVG.join('')}</svg></article></html>`;
- fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,`${outputName}.png`),canvas.toBuffer('image/png'));fs.writeFileSync(path.join(out,`${outputName}.html`),html);fs.writeFileSync(path.join(out,recipeName),JSON.stringify({...cfg,width:W,height:H,fontSize:size,letterSpacing:spacing,bodyBox:{x:0,y:0,width:W,height:bodyLimit},sourceTop,sourceRows,backgroundFit:"stretch-square",verticalAlign:"middle",bodyHeight,topPadding,lineSpacingMode:"optical-small-word-anchors",regularBaselineStep,baselineSteps,collisionChecked:true,rendered},null,2));console.log(JSON.stringify({variant:cfg.variant,fontSize:size,rows:rendered,output:out}));
+ const pngBytes=canvas.toBuffer('image/png');fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,`${outputName}.png`),pngBytes);fs.writeFileSync(path.join(out,`${outputName}.html`),html);fs.writeFileSync(path.join(out,recipeName),JSON.stringify({...cfg,width:W,height:H,fontSize:size,letterSpacing:spacing,bodyBox:{x:0,y:0,width:W,height:bodyLimit},sourceTop,sourceRows,backgroundFit:"stretch-square",verticalAlign:"middle",bodyHeight,topPadding,lineSpacingMode:"optical-small-word-anchors",regularBaselineStep,baselineSteps,collisionChecked:true,rendered,bodyGlyphs,sourceGlyphs,emphasisRatio:1.55,fontInfo:{body:{file:path.basename(fontName),sha256:sha(fontBytes),custom:!!cfg.font},background:backBytes?{file:'KingHwaOldSong-v3.ttf.gz',sha256:sha(backBytes)}:null},outputInfo:{pngSha256:sha(pngBytes),htmlSha256:sha(Buffer.from(html))},rendererInfo:{entry:'scripts/render-poster.cjs',sha256:sha(fs.readFileSync(__filename)),inputSha256:sha(inputBytes)}},null,2));const verified=require('node:child_process').spawnSync(process.execPath,[path.join(__dirname,'verify-poster.cjs'),file,out],{encoding:'utf8'});if(verified.status!==0)throw Error(verified.stderr||verified.stdout||'Poster verification failed');console.log(JSON.stringify({variant:cfg.variant,fontSize:size,output:out,verification:verified.stdout.trim()}));
 }
 main().catch(e=>{console.error(e.message);process.exitCode=1});
