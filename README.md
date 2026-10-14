@@ -2,7 +2,7 @@
 
 品牌：**Audience2**。中文名：**二流名言**。
 
-当前版本：**1.5.1**。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：**1.6**。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 制作歌词和金句海报，支持红黑照片底绿字、浅绿织纹底红字两种版本。输出 PNG、可编辑 HTML 和排版参数 JSON。
 

@@ -2,7 +2,7 @@
 name: quote-poster
 description: 二流名言，Audience2 品牌的歌词和金句海报，支持红黑照片底绿字、浅绿织纹底红字两种版本。每次新制作先让用户选择版本，输出 PNG、可编辑分层 HTML 和参数 JSON。用于“二流名言”、暗房海报、红黑颗粒海报、浅绿歌词海报及使用这套模板出图的请求。
 metadata:
-  version: "1.5.1"
+  version: "1.6.0"
   brand: "Audience2"
 ---
 
@@ -10,7 +10,7 @@ metadata:
 
 品牌：Audience2。技能标识：`quote-poster`，调用方式：`$quote-poster`。
 
-当前版本：1.5.1。更新记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：1.6。更新记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 执行要点
 
